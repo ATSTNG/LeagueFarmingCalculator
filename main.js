@@ -118,12 +118,21 @@ class LeagueItemSet {
         return this._by_id[item_id];
     }
 
-    render(filter) {
+    render() {
         var container = document.getElementById("shop_items_container");
-        container.innerHTML = '';
 
+        var sort_by = document.getElementById('sort_selector').value;
+        if (sort_by == 'cost') this.sort_by_cost();
+        if (sort_by == 'name') this.sort_by_name();
+
+        var filter_str = document.getElementById('filter_selector').value.toLowerCase().trim();
+
+        container.innerHTML = '';
         for (var i in this.items) {
             var item = this.items[i];
+
+            if (item.cost == 0) continue;
+            if (item.name.toLowerCase().indexOf(filter_str) == -1) continue;
 
             container.appendChild(item.shop_div());
         }
@@ -132,7 +141,18 @@ class LeagueItemSet {
 
 class LeagueBuild {
     constructor () {
+        this.MAX_TIME = 180*60 + 0;
+        this.MAX_GOLD = 100*1000;
+
         this.items = [];
+
+        this.update_completely_available();
+    }
+
+    update_completely_available() {
+        var champion = document.getElementById('champion_selector').value;
+
+        this.complete_build_model = new LeagueIncomeModel(this.MAX_TIME, this.total_cost, champion);
     }
 
     push(item) {
@@ -141,18 +161,23 @@ class LeagueBuild {
         this.items.push(item);
 
         console.log(this.items);
+
+        this.update_completely_available();
     }
 
     delete_by_idx(idx) {
         this.items.splice(idx, 1);
+
+        this.update_completely_available();
     }
 
     get total_cost() {
         var sum_cost = 0;
-
+        
         for (var i in this.items) {
             var item = this.items[i];
-            
+
+            sum_cost += item.cost;
         }
 
         return sum_cost;
@@ -170,14 +195,14 @@ class LeagueBuild {
         for (var i in this.items) {
             var item = this.items[i];
 
-            container.appendChild(item.build_div(4000 - sum_cost, i));
+            container.appendChild(item.build_div(stats_table.model.total_gold - sum_cost, i));
             
             sum_cost += item.cost;
         }
 
         items_count_label.innerHTML = this.items.length;
         items_cost_label.innerHTML = gold_span(sum_cost);
-        items_time_label.innerHTML = time_span(123);
+        items_time_label.innerHTML = time_span(this.complete_build_model.current_time);
     }
 
 }
@@ -216,10 +241,12 @@ class LeagueIncomeModel {
         if (this.champion == "tf") this.loaded_dice_average_bounty = 3.5;
 
         this.compute();
+
+        console.log(this.current_time, this.total_gold);
     }
 
     get rift_passive_income_seconds() {
-        return Math.max(0, this.time - this.rift_passive_income_start_time);
+        return Math.max(0, this.current_time - this.rift_passive_income_start_time);
     }
 
     get passive_profit() {
@@ -265,8 +292,8 @@ class LeagueIncomeModel {
     }
 
     siege_minion_spawns_at(time) {
-        if (time < 15*60 && time % 90 == (2*60+5)%90 ) return true;
-        if (time < 25*60 && time % 60 == 5) return true;
+        if (time < 15*60 && (time % 90) == ((2*60+5)%90) ) return true;
+        if (time > 15*60 && time < 25*60 && time % 60 == 5) return true;
         if (time > 25*60 && time % 30 == 5) return true;
     
         return false;
@@ -274,25 +301,27 @@ class LeagueIncomeModel {
     
     siege_minion_gold_bounty_at(time) {
         var base = 60;
-        var upgrade = 3 * Math.floor(Math.max(0, time - (2*60+15)) / 90);
+        var upgrade = 3 * Math.floor(Math.max(0, time - (2*60+5)) / 90);
         upgrade = Math.min(30, upgrade);
     
         return base + upgrade;
     }
 
-    passively_wait(cap_time, cap_gold, closest_event_time) {
-        var passive_gold_left = cap_gold - this.total_gold;
+    passively_wait(closest_event_time) {
+        var passive_gold_left = this.cap_gold - this.total_gold;
         var passive_income_period = Math.min(
-            Math.ceil(passive_gold_left / this.current_passive_income_per_second), 
-            cap_time - this.time,
-            closest_event_time - this.time
+            this.cap_time - this.current_time,
+            closest_event_time - this.current_time,
+            Math.ceil(passive_gold_left / this.current_passive_income_per_second)
         );
-        
-        if (passive_income_period < 0) return true;
 
-        this.time += passive_income_period;
+        if (this.current_time >= this.cap_time) return true;
+        if (this.total_gold >= this.cap_gold) return true;
+        if (this.current_time >= closest_event_time) return false;
+
+        this.current_time += passive_income_period;
         
-        if (this.time < closest_event_time) return true;
+        if (this.current_time < closest_event_time) return true;
         
         return false;
     }
@@ -300,15 +329,22 @@ class LeagueIncomeModel {
     compute() {
         console.log(this.cap_time, this.cap_gold, this.champion);
     
-        if (this.total_gold > cap_gold) return;
+        if (this.total_gold > this.cap_gold) return;
 
-        for (var wave_time = this.first_wave_timing; wave_time < cap_time; wave_time += this.wave_period) {
-            // wait
+        for (var wave_time = this.first_wave_timing; true; wave_time += this.wave_period) {
+            // wait income
             if (this.current_time < this.rift_passive_income_start_time && this.rift_passive_income_start_time < wave_time) {
 
+                if (this.passively_wait(this.rift_passive_income_start_time)) return;
+                this.current_passive_income_per_second = this.rift_passive_income_per_second;
             }
+
+            // wait wave
+            if (this.passively_wait(wave_time)) return;
             
-            // minion wave
+            console.log(this.current_time, wave_time, this.cap_time, this.total_gold, this.siege_minion_spawns_at(wave_time));
+            
+            // get minion wave
             this.melee_lasthits += this.melee_per_wave;
             this.caster_lasthits += this.caster_per_wave;
     
@@ -317,14 +353,7 @@ class LeagueIncomeModel {
                 this.siege_total_bounty += this.siege_minion_gold_bounty_at(wave_time);
             }
     
-            if (this.total_gold >= cap_gold) return;
-    
-            // passive income after wave
-            var next_wave_time = wave_time + this.wave_period;
-            if (this.passively_wait(next_wave_time)) return;
-
-            
-            
+            if (this.total_gold >= this.cap_gold) return;
         }
     }
     
@@ -332,162 +361,28 @@ class LeagueIncomeModel {
 
 class LeagueStatsTable {
     constructor () {
-        this.current_time = 8*60 + 0;
+        this.current_time = 20*60 + 0;
 
+        this.MAX_TIME = 180*60 + 0;
+        this.MAX_GOLD = 100*1000;
     }
 
     set_time(time) {
+        if (Number.isNaN(time)) time = 0;
         if (time > this.MAX_TIME) time = this.MAX_TIME;
         if (time < 0) time = 0;
 
         this.current_time = time;
     }
-    
-    model_compute(cap_time, cap_gold, champion) {
-        console.log(cap_time, cap_gold, champion);
 
-        cap_time = Math.min(cap_time, this.MAX_TIME);
-
-        var model = {};
-        model.time = 0;
-        model.total_gold = 0;
+    update_time() {
+        var min = Number.parseInt(document.getElementById('stattable_min').value);
+        var sec = Number.parseInt(document.getElementById('stattable_sec').value);
         
-        // starting gold
-        model.starting_gold = 500;
+        if (Number.isNaN(min)) min = 0;
+        if (Number.isNaN(sec)) sec = 0;
 
-        // passive income
-        model.passive_income_per_second = 20.4 / 10;
-        model.passive_income_start_time = 1*60 + 50;
-
-        model.passive_income_seconds = 0;
-        model.passive_profit = 0;
-
-        // minions
-        model.lane_minion_lasthits = 0;
-        model.lane_minion_total_bounty = 0;
-        
-        model.melee_lasthits = 0;
-        model.caster_lasthits = 0;
-        model.siege_lasthits = 0;
-        
-        model.melee_bounty_per_one = 21;
-        model.caster_bounty_per_one = 14;
-
-        model.melee_total_bounty = 0;
-        model.caster_total_bounty = 0;
-        model.siege_total_bounty = 0;
-
-        model.melee_per_wave = 3;
-        model.caster_per_wave = 3;
-
-        model.first_wave_timing = 1*60 + 5;
-        model.wave_period = 30;
-
-        // tf
-        model.loaded_dice_average_bounty = 0;
-        if (champion == "tf") model.loaded_dice_average_bounty = 3.5;
-        model.loaded_dice_total_bounty = 0;
-
-        // simulate
-        model.time = 0;
-        model.total_gold = model.starting_gold;
-
-        if (model.total_gold < cap_gold && model.passive_income_start_time < cap_time) {
-            model.time = model.passive_income_start_time;
-        }
-
-        if (model.total_gold < cap_gold) {
-            var passive_gold_left = cap_gold - model.total_gold;
-            var passive_income_period = Math.min(
-                Math.ceil(passive_gold_left / model.passive_income_per_second), 
-                cap_time - model.time,
-                model.first_wave_timing - model.time
-            );
-
-            model.time += passive_income_period;
-            model.passive_income_seconds += passive_income_period;
-            model.passive_profit = model.passive_income_seconds * model.passive_income_per_second;
-
-            model.lane_minion_lasthits = 
-                model.melee_lasthits +
-                model.caster_lasthits + 
-                model.siege_lasthits;
-            model.lane_minion_total_bounty = 
-                model.melee_total_bounty +
-                model.caster_total_bounty + 
-                model.siege_total_bounty;
-            model.loaded_dice_total_bounty = 
-                model.loaded_dice_average_bounty * model.lane_minion_lasthits;
-
-            model.total_gold = 
-                model.starting_gold +
-                model.passive_profit +
-                model.lane_minion_total_bounty + 
-                model.loaded_dice_total_bounty;
-        }
-
-        if (model.time < model.first_wave_timing) return model;
-
-        for (var wave_time = model.first_wave_timing; wave_time < cap_time; wave_time += model.wave_period) {
-            var siege_minion_spawns_this_wave = this.siege_minion_spawns_at(wave_time);
-            console.log(wave_time, siege_minion_spawns_this_wave);
-
-            // minion wave
-            model.melee_lasthits += model.melee_per_wave;
-            model.caster_lasthits += model.caster_per_wave;
-
-            if (this.siege_minion_spawns_at(wave_time)) {
-                model.siege_lasthits += 1;
-                model.siege_total_bounty += this.siege_minion_gold_bounty_at(wave_time);
-            }
-
-
-            model.melee_total_bounty = model.melee_lasthits * model.melee_bounty_per_one;
-            model.caster_total_bounty = model.caster_lasthits * model.caster_bounty_per_one;
-
-            model.lane_minion_lasthits = 
-                model.melee_lasthits +
-                model.caster_lasthits + 
-                model.siege_lasthits;
-            model.lane_minion_total_bounty = 
-                model.melee_total_bounty +
-                model.caster_total_bounty + 
-                model.siege_total_bounty;
-            model.loaded_dice_total_bounty = 
-                model.loaded_dice_average_bounty * model.lane_minion_lasthits;
-                
-            model.total_gold = 
-                model.starting_gold +
-                model.passive_profit +
-                model.lane_minion_total_bounty + 
-                model.loaded_dice_total_bounty;
-
-            if (model.total_gold >= cap_gold) return model;
-
-            // passive income after wave
-            var next_wave_time = wave_time + model.wave_period;
-            var passive_gold_left = cap_gold - model.total_gold;
-            var passive_income_period = Math.min(
-                Math.ceil(passive_gold_left / model.passive_income_per_second), 
-                cap_time - model.time,
-                next_wave_time - model.time
-            );
-
-            model.time += passive_income_period;
-            model.passive_income_seconds += passive_income_period;
-            model.passive_profit = model.passive_income_seconds * model.passive_income_per_second;
-
-            model.total_gold = 
-                model.starting_gold +
-                model.passive_profit +
-                model.lane_minion_total_bounty + 
-                model.loaded_dice_total_bounty;
-            
-            if (model.time < next_wave_time) return model;
-            
-        }
-
-        return model;
+        this.set_time(min*60 + sec);
     }
 
     table_starting_gold(model) {
@@ -501,7 +396,7 @@ class LeagueStatsTable {
     table_row_passive_income(model) {
         return "<tr>" +
             "<td>Passive income</td>" +
-            "<td>" + time_span(model.passive_income_seconds) + " x " + gold_span(model.passive_income_per_second, 2)  + "</td>" +
+            "<td>" + time_span(model.rift_passive_income_seconds) + " x " + gold_span(model.rift_passive_income_per_second, 2)  + "</td>" +
             "<td>" + gold_span(model.passive_profit) +"</td>" + 
             "</tr>";
     }
@@ -538,6 +433,14 @@ class LeagueStatsTable {
             "</tr>";
     }
 
+    table_row_loaded_dice(model) {
+        return "<tr>" +
+            "<td>Loaded dice (passive)</td>" +
+            "<td>" + model.lane_minion_lasthits + " x " + gold_span(model.loaded_dice_average_bounty, 1)  + "</td>" +
+            "<td>" + gold_span(model.loaded_dice_total_bounty) +"</td>" + 
+            "</tr>";
+    }
+
     table_row_sum(model) {
         return "<tr>" +
             "<td>Total</td>" +
@@ -559,7 +462,7 @@ class LeagueStatsTable {
         var time_label = document.getElementById('stattable_time_label');
 
         var champion = document.getElementById('champion_selector').value;
-        var model = this.model_compute(this.current_time, this.MAX_GOLD, champion);
+        var model = new LeagueIncomeModel(this.current_time, this.MAX_GOLD, champion);
 
         console.log(model);
 
@@ -579,26 +482,34 @@ class LeagueStatsTable {
         table.innerHTML += this.table_row_minions_siege(model);
         table.innerHTML += this.table_row_minions_all(model);
     
+        if (champion == 'tf') {
+            table.innerHTML += this.table_row_separator(model);
+            table.innerHTML += this.table_row_loaded_dice(model);
+        }
+
         table.innerHTML += this.table_row_separator(model);
         
         table.innerHTML += this.table_row_sum(model);
         
-        time_label.innerHTML = time_span(model.time);
+        time_label.innerHTML = time_span(model.current_time);
+
+        this.model = model;
     }
 }
 
 var LEAGUE_VERSION = "10.4.1";
+var LAST_UPDATED = "2 March 2020";
 var itemset = new LeagueItemSet();
 var build = new LeagueBuild();
 var stats_table = new LeagueStatsTable();
 
 function render_all() {
+    stats_table.render();
     itemset.render();
     build.render();
-    stats_table.render();
 }
 
-fetch("http://ddragon.leagueoflegends.com/cdn/" + LEAGUE_VERSION + "/data/en_US/item.json")
+fetch("https://ddragon.leagueoflegends.com/cdn/" + LEAGUE_VERSION + "/data/en_US/item.json")
     .then(response => response.json())
     .then(items_json => {
         itemset.from_json(items_json);
@@ -608,4 +519,7 @@ fetch("http://ddragon.leagueoflegends.com/cdn/" + LEAGUE_VERSION + "/data/en_US/
         console.log(itemset);
     });
 
-
+document.getElementById('general_info_label').innerHTML = 
+    "League of Legends solo lane farming calculator. " + 
+    "Last updated at <span style='color: #00ff00;'>" + LAST_UPDATED + "</span>. " + 
+    "Consistent with game version <span style='color: #00ff00;'>" + LEAGUE_VERSION + "</span>";

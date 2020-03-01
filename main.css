@@ -108,6 +108,8 @@ th {
     text-decoration: none;
     font-size: 12px;
 
+    cursor: pointer;
+
     position: absolute;
     right: 0;
     top: 0;
