@@ -1,10 +1,79 @@
 <html>
 
 <head>
+    <link rel="stylesheet" type="text/css" href="main.css">
+    <title>LoL farming calculator</title>
 </head>
 
 <body>
-<h3>Hello there</h3>
+
+<table>
+    <tr id="main_container">
+        <td id="table_container">
+            <div class="info_container">
+                Map: 
+                <select id="map_selector">
+                    <option value="rift">Summoner's Rift</option>
+                </select>
+
+                <br>
+
+                Champion: 
+                <select id="champion_selector">
+                    <option value="none">Not specific</option>
+                    <option value="tf">Twisted Fate</option>
+                </select>
+
+                <br>
+
+                Time from start: <span id="stattable_time_label">---</span>
+                
+                <br><br>
+
+                Set time to <input size=1 value='20'>min <input size=1 value='00'>sec
+            </div>    
+
+            <table id="stattable">
+            </table>
+        </td>
+        
+        <td id="build_container">
+            <div class="info_container">
+                Items selected: <span id="build_items_count_label">---</span> / 6
+
+                <br>
+
+                Total gold cost: <span id="build_items_cost_label">---</span>
+
+                <br>
+
+                Completely available at: <span id="build_items_time_label">---</span>
+            </div>
+
+            <div id="build_items_container" >Loading items dataset...</div>
+        </td>
+        
+        <td id="shop_container">
+            <div class="info_container">
+                Sort by: 
+                
+                <select id="sort_selector">
+                    <option value="cost">Cost</option>
+                    <option value="name">Name</option>
+                </select>
+
+                <br>
+
+                Filter by item name: <input size=25>
+            </div>
+
+            <div id="shop_items_container" >Loading items dataset...</div>
+        </td>
+    </tr>
+</table>
+
+<script type="text/javascript" src="main.js"></script>
+    
 </body>
 
 </html>

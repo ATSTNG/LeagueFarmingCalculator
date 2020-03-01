@@ -1,0 +1,114 @@
+body {
+    background-color: black;
+    color: white;
+}
+
+.gold_indicator {
+    color: gold;
+    font-size: medium;
+}
+
+.time_indicator {
+    color: #aaaaff;
+}
+
+.league_shop_item {
+    cursor: pointer;
+    border: solid 1px grey;
+    border-radius: 5px;
+    margin: 3px;
+    padding: 3px;
+    display: inline-block;
+    text-align: center;
+}
+
+.league_build_item {
+    border: solid 1px grey;
+    border-radius: 5px;
+    margin: 10px;
+    padding: 5px;
+
+    overflow: hidden;
+    white-space: nowrap;
+
+    text-align: left;
+    font-size: larger;
+    width: 350px;
+    height: 70px;
+    
+}
+
+#table_container {
+    width: 500px;
+}
+
+#build_container {
+    width: 370px;
+}
+
+#stattable {
+    width: 100%;
+    text-align: right;
+}
+
+.separator_tr {
+    border-bottom: solid 1px grey;
+}
+
+#shop_container {
+
+}
+
+#shop_items_container {
+    height: 90vh;
+    overflow: scroll;
+}
+
+.info_container {
+    font-size: larger;
+    padding: 3px;
+    margin: 3px;
+}
+
+th {
+    font-size: larger;
+}
+
+#main_container {
+    vertical-align: top;
+}
+
+.item_available {
+    background-color: #003b00;
+}
+.item_available_label {
+    color: #00db00;
+}
+
+.item_not_available {
+    background-color: #3b0000;
+}
+.item_not_available_label {
+    color: #db0000;
+}
+
+.remove_button_holder {
+    position: relative;
+}
+
+.remove_button {
+    background-color: red;
+    border-top: solid 1px #ff4444;
+    border-left: solid 1px #ff4444;
+    border-bottom: solid 1px #bb0000;
+    border-right: solid 1px #bb0000;
+    border-radius: 2px;
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    font-size: 12px;
+
+    position: absolute;
+    right: 0;
+    top: 0;
+}
