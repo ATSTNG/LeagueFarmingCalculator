@@ -17,6 +17,16 @@ function close_button_html(item_idx) {
     return "<div class='remove_button_holder'><button class='remove_button' onclick='build.delete_by_idx(" + item_idx + "); render_all()'>x</button></div>";
 }
 
+function get_lasthit_quality_value() {
+    var v = document.getElementById('lasthit_quality_selector').value / 100.0;
+
+    if (Number.isNaN(v)) v = 1;
+    if (v > 1) v = 1;
+    if (v < 0) v = 0;
+
+    return v;
+}
+
 class LeagueItem {
     constructor (id, name, cost) {
         this.id = id;
@@ -141,9 +151,6 @@ class LeagueItemSet {
 
 class LeagueBuild {
     constructor () {
-        this.MAX_TIME = 180*60 + 0;
-        this.MAX_GOLD = 100*1000;
-
         this.items = [];
 
         this.update_completely_available();
@@ -151,8 +158,9 @@ class LeagueBuild {
 
     update_completely_available() {
         var champion = document.getElementById('champion_selector').value;
+        var lasthit_quality = get_lasthit_quality_value();
 
-        this.complete_build_model = new LeagueIncomeModel(this.MAX_TIME, this.total_cost, champion);
+        this.complete_build_model = new LeagueIncomeModel(MAX_TIME, this.total_cost, champion, lasthit_quality);
     }
 
     push(item) {
@@ -208,13 +216,11 @@ class LeagueBuild {
 }
 
 class LeagueIncomeModel {
-    constructor (cap_time, cap_gold, champion) {
-        this.MAX_TIME = 180*60 + 0;
-        this.MAX_GOLD = 100*1000;
-
+    constructor (cap_time, cap_gold, champion, lasthit_quality) {
         this.cap_time = cap_time;
         this.cap_gold = cap_gold;
         this.champion = champion;
+        this.lasthit_quality = lasthit_quality;
         
         this.rift_passive_income_per_second = 20.4 / 10;
         this.rift_passive_income_start_time = 1*60 + 50;
@@ -345,12 +351,12 @@ class LeagueIncomeModel {
             console.log(this.current_time, wave_time, this.cap_time, this.total_gold, this.siege_minion_spawns_at(wave_time));
             
             // get minion wave
-            this.melee_lasthits += this.melee_per_wave;
-            this.caster_lasthits += this.caster_per_wave;
-    
+            this.melee_lasthits  += this.melee_per_wave  * this.lasthit_quality;
+            this.caster_lasthits += this.caster_per_wave * this.lasthit_quality;
+
             if (this.siege_minion_spawns_at(wave_time)) {
-                this.siege_lasthits += 1;
-                this.siege_total_bounty += this.siege_minion_gold_bounty_at(wave_time);
+                this.siege_lasthits += 1 * this.lasthit_quality;
+                this.siege_total_bounty += this.siege_minion_gold_bounty_at(wave_time) * this.lasthit_quality;
             }
     
             if (this.total_gold >= this.cap_gold) return;
@@ -362,14 +368,11 @@ class LeagueIncomeModel {
 class LeagueStatsTable {
     constructor () {
         this.current_time = 20*60 + 0;
-
-        this.MAX_TIME = 180*60 + 0;
-        this.MAX_GOLD = 100*1000;
     }
 
     set_time(time) {
         if (Number.isNaN(time)) time = 0;
-        if (time > this.MAX_TIME) time = this.MAX_TIME;
+        if (time > MAX_TIME) time = MAX_TIME;
         if (time < 0) time = 0;
 
         this.current_time = time;
@@ -401,10 +404,21 @@ class LeagueStatsTable {
             "</tr>";
     }
 
+    table_row_lasthit_quality(model) {
+        var color_red = Math.round(255 * Math.min(1, 2-2*model.lasthit_quality));
+        var color_green = Math.round(255 * Math.min(1, 2*model.lasthit_quality));
+
+        return "<tr>" +
+            "<td>Lasthit quality</td>" +
+            "<td style='color: rgb(" + color_red + ", " + color_green + ", 0);'>" + (100 * model.lasthit_quality).toFixed(1) + "% " + "</td>" +
+            "<td>" + "</td>" + 
+            "</tr>";
+    }
+
     table_row_minions_melee(model) {
         return "<tr>" +
             "<td>Melee minions lasthits</td>" +
-            "<td>" + model.melee_lasthits + " x " + gold_span(model.melee_bounty_per_one)  + "</td>" +
+            "<td>" + model.melee_lasthits.toFixed(1) + " x " + gold_span(model.melee_bounty_per_one)  + "</td>" +
             "<td>" + gold_span(model.melee_total_bounty) +"</td>" + 
             "</tr>";
     }
@@ -412,7 +426,7 @@ class LeagueStatsTable {
     table_row_minions_caster(model) {
         return "<tr>" +
             "<td>Caster minions lasthits</td>" +
-            "<td>" + model.caster_lasthits + " x " + gold_span(model.caster_bounty_per_one)  + "</td>" +
+            "<td>" + model.caster_lasthits.toFixed(1) + " x " + gold_span(model.caster_bounty_per_one)  + "</td>" +
             "<td>" + gold_span(model.caster_total_bounty) +"</td>" + 
             "</tr>";
     }
@@ -420,7 +434,7 @@ class LeagueStatsTable {
     table_row_minions_siege(model) {
         return "<tr>" +
             "<td>Siege minions lasthits</td>" +
-            "<td>" + model.siege_lasthits + "</td>" +
+            "<td>" + model.siege_lasthits.toFixed(1) + "</td>" +
             "<td>" + gold_span(model.siege_total_bounty) +"</td>" + 
             "</tr>";
     }
@@ -428,7 +442,7 @@ class LeagueStatsTable {
     table_row_minions_all(model) {
         return "<tr>" +
             "<td>All minions lasthits</td>" +
-            "<td>" + model.lane_minion_lasthits + "</td>" +
+            "<td>" + model.lane_minion_lasthits.toFixed(1) + "</td>" +
             "<td>" + gold_span(model.lane_minion_total_bounty) +"</td>" + 
             "</tr>";
     }
@@ -436,7 +450,7 @@ class LeagueStatsTable {
     table_row_loaded_dice(model) {
         return "<tr>" +
             "<td>Loaded dice (passive)</td>" +
-            "<td>" + model.lane_minion_lasthits + " x " + gold_span(model.loaded_dice_average_bounty, 1)  + "</td>" +
+            "<td>" + model.lane_minion_lasthits.toFixed(1) + " x " + gold_span(model.loaded_dice_average_bounty, 1)  + "</td>" +
             "<td>" + gold_span(model.loaded_dice_total_bounty) +"</td>" + 
             "</tr>";
     }
@@ -462,7 +476,8 @@ class LeagueStatsTable {
         var time_label = document.getElementById('stattable_time_label');
 
         var champion = document.getElementById('champion_selector').value;
-        var model = new LeagueIncomeModel(this.current_time, this.MAX_GOLD, champion);
+        var lasthit_quality = get_lasthit_quality_value();
+        var model = new LeagueIncomeModel(this.current_time, MAX_GOLD, champion, lasthit_quality);
 
         console.log(model);
 
@@ -477,6 +492,7 @@ class LeagueStatsTable {
 
         table.innerHTML += this.table_row_separator(model);
         
+        table.innerHTML += this.table_row_lasthit_quality(model);
         table.innerHTML += this.table_row_minions_melee(model);
         table.innerHTML += this.table_row_minions_caster(model);
         table.innerHTML += this.table_row_minions_siege(model);
@@ -497,8 +513,10 @@ class LeagueStatsTable {
     }
 }
 
-var LEAGUE_VERSION = "10.4.1";
-var LAST_UPDATED = "2 March 2020";
+var LEAGUE_VERSION = "10.5.1";
+var LAST_UPDATED = "8 March 2020";
+var MAX_GOLD = 150 * 1000;
+var MAX_TIME = 240 * 60;
 var itemset = new LeagueItemSet();
 var build = new LeagueBuild();
 var stats_table = new LeagueStatsTable();
