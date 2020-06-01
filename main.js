@@ -513,8 +513,8 @@ class LeagueStatsTable {
     }
 }
 
-var LEAGUE_VERSION = "10.5.1";
-var LAST_UPDATED = "8 March 2020";
+var LEAGUE_VERSION = "10.11.1";
+var LAST_UPDATED = "2 June 2020";
 var MAX_GOLD = 150 * 1000;
 var MAX_TIME = 240 * 60;
 var itemset = new LeagueItemSet();
