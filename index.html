@@ -20,6 +20,15 @@
 
                 <br>
 
+                Line: 
+                <select id="line_selector" onchange="build.update_completely_available(); render_all();">
+                    <option value="top">Top</option>
+                    <option value="mid">Mid</option>
+                    <option value="bot">Bottom</option>
+                </select>
+
+                <br>
+
                 Champion: 
                 <select id="champion_selector" onchange="build.update_completely_available(); render_all();">
                     <option value="none">Not specific</option>

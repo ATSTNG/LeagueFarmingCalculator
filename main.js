@@ -158,9 +158,10 @@ class LeagueBuild {
 
     update_completely_available() {
         var champion = document.getElementById('champion_selector').value;
+        var line = document.getElementById('line_selector').value;
         var lasthit_quality = get_lasthit_quality_value();
 
-        this.complete_build_model = new LeagueIncomeModel(MAX_TIME, this.total_cost, champion, lasthit_quality);
+        this.complete_build_model = new LeagueIncomeModel(MAX_TIME, this.total_cost, champion, lasthit_quality, line);
     }
 
     push(item) {
@@ -216,10 +217,11 @@ class LeagueBuild {
 }
 
 class LeagueIncomeModel {
-    constructor (cap_time, cap_gold, champion, lasthit_quality) {
+    constructor (cap_time, cap_gold, champion, lasthit_quality, line) {
         this.cap_time = cap_time;
         this.cap_gold = cap_gold;
         this.champion = champion;
+        this.line = line;
         this.lasthit_quality = lasthit_quality;
         
         this.rift_passive_income_per_second = 20.4 / 10;
@@ -310,7 +312,10 @@ class LeagueIncomeModel {
         var upgrade = 3 * Math.floor(Math.max(0, time - (2*60+5)) / 90);
         upgrade = Math.min(30, upgrade);
     
-        return base + upgrade;
+        var midline_early_penalty = 0;
+        if (time < 14*60 && this.line == "mid") midline_early_penalty = 10;
+
+        return base + upgrade - midline_early_penalty;
     }
 
     passively_wait(closest_event_time) {
@@ -333,7 +338,7 @@ class LeagueIncomeModel {
     }
 
     compute() {
-        console.log(this.cap_time, this.cap_gold, this.champion);
+        console.log(this.cap_time, this.cap_gold, this.champion, this.line);
     
         if (this.total_gold > this.cap_gold) return;
 
@@ -476,8 +481,9 @@ class LeagueStatsTable {
         var time_label = document.getElementById('stattable_time_label');
 
         var champion = document.getElementById('champion_selector').value;
+        var line = document.getElementById('line_selector').value;
         var lasthit_quality = get_lasthit_quality_value();
-        var model = new LeagueIncomeModel(this.current_time, MAX_GOLD, champion, lasthit_quality);
+        var model = new LeagueIncomeModel(this.current_time, MAX_GOLD, champion, lasthit_quality, line);
 
         console.log(model);
 
@@ -513,8 +519,8 @@ class LeagueStatsTable {
     }
 }
 
-var LEAGUE_VERSION = "10.23.1";
-var LAST_UPDATED = "23 November 2020";
+var LEAGUE_VERSION = "11.13.1";
+var LAST_UPDATED = "24 June 2021";
 var MAX_GOLD = 150 * 1000;
 var MAX_TIME = 240 * 60;
 var itemset = new LeagueItemSet();
