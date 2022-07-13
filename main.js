@@ -519,8 +519,8 @@ class LeagueStatsTable {
     }
 }
 
-var LEAGUE_VERSION = "12.1.1";
-var LAST_UPDATED = "7 January 2022";
+var LEAGUE_VERSION = "12.13.1";
+var LAST_UPDATED = "13 July 2022";
 var MAX_GOLD = 150 * 1000;
 var MAX_TIME = 240 * 60;
 var itemset = new LeagueItemSet();
