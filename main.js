@@ -227,6 +227,10 @@ class LeagueIncomeModel {
         this.rift_passive_income_per_second = 20.4 / 10;
         this.rift_passive_income_start_time = 1*60 + 50;
 
+        this.early_game_duration = 14*60;
+        this.early_game_midline_penalty_per_minion = -1;
+        this.early_game_midline_lasthits = 0;
+
         this.current_time = 0;
         this.current_passive_income_per_second = 0;
         this.starting_gold = 500;
@@ -292,11 +296,16 @@ class LeagueIncomeModel {
         return this.loaded_dice_average_bounty * this.lane_minion_lasthits;
     }
 
+    get early_game_midline_total_penalty() {
+        return this.early_game_midline_lasthits * this.early_game_midline_penalty_per_minion;
+    }
+
     get total_gold() {
         return this.starting_gold +
             this.passive_profit +
             this.lane_minion_total_bounty + 
-            this.loaded_dice_total_bounty;
+            this.loaded_dice_total_bounty +
+            this.early_game_midline_total_penalty;
     }
 
     siege_minion_spawns_at(time) {
@@ -312,10 +321,7 @@ class LeagueIncomeModel {
         var upgrade = 3 * Math.floor(Math.max(0, time - (2*60+5)) / 90);
         upgrade = Math.min(30, upgrade);
     
-        var midline_early_penalty = 0;
-        if (time < 14*60 && this.line == "mid") midline_early_penalty = 10;
-
-        return base + upgrade - midline_early_penalty;
+        return base + upgrade;
     }
 
     passively_wait(closest_event_time) {
@@ -363,7 +369,11 @@ class LeagueIncomeModel {
                 this.siege_lasthits += 1 * this.lasthit_quality;
                 this.siege_total_bounty += this.siege_minion_gold_bounty_at(wave_time) * this.lasthit_quality;
             }
-    
+   
+            if (this.line == "mid" && wave_time < this.early_game_duration) {
+                this.early_game_midline_lasthits = this.lane_minion_lasthits;
+            }
+
             if (this.total_gold >= this.cap_gold) return;
         }
     }
@@ -460,6 +470,14 @@ class LeagueStatsTable {
             "</tr>";
     }
 
+    table_row_early_game_midline_penalty(model) {
+        return "<tr>" +
+            "<td>Early game midline penalty</td>" +
+            "<td>" + model.early_game_midline_lasthits.toFixed(1) + " x " + gold_span(model.early_game_midline_penalty_per_minion, 0)  + "</td>" +
+            "<td>" + gold_span(model.early_game_midline_total_penalty) +"</td>" + 
+            "</tr>";
+    }
+
     table_row_sum(model) {
         return "<tr>" +
             "<td>Total</td>" +
@@ -504,8 +522,13 @@ class LeagueStatsTable {
         table.innerHTML += this.table_row_minions_siege(model);
         table.innerHTML += this.table_row_minions_all(model);
     
+        table.innerHTML += this.table_row_separator(model);
+
+        if (line == "mid") {
+            table.innerHTML += this.table_row_early_game_midline_penalty(model);
+        }
+        
         if (champion == 'tf') {
-            table.innerHTML += this.table_row_separator(model);
             table.innerHTML += this.table_row_loaded_dice(model);
         }
 
@@ -519,8 +542,8 @@ class LeagueStatsTable {
     }
 }
 
-var LEAGUE_VERSION = "12.17.1";
-var LAST_UPDATED = "8 September 2022";
+var LEAGUE_VERSION = "13.1.1";
+var LAST_UPDATED = "11 January 2022";
 var MAX_GOLD = 150 * 1000;
 var MAX_TIME = 240 * 60;
 var itemset = new LeagueItemSet();
