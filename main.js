@@ -227,8 +227,9 @@ class LeagueIncomeModel {
         this.rift_passive_income_per_second = 20.4 / 10;
         this.rift_passive_income_start_time = 1*60 + 50;
 
+        // retired in patch 13.12
         this.early_game_duration = 14*60;
-        this.early_game_midline_penalty_per_minion = -1;
+        this.early_game_midline_penalty_per_minion = 0; 
         this.early_game_midline_lasthits = 0;
 
         this.current_time = 0;
@@ -524,9 +525,8 @@ class LeagueStatsTable {
     
         table.innerHTML += this.table_row_separator(model);
 
-        if (line == "mid") {
-            table.innerHTML += this.table_row_early_game_midline_penalty(model);
-        }
+        // retired in patch 13.12
+        //if (line == "mid") {table.innerHTML += this.table_row_early_game_midline_penalty(model);}
         
         if (champion == 'tf') {
             table.innerHTML += this.table_row_loaded_dice(model);
@@ -542,8 +542,8 @@ class LeagueStatsTable {
     }
 }
 
-var LEAGUE_VERSION = "13.7.1";
-var LAST_UPDATED = "6 April 2023";
+var LEAGUE_VERSION = "13.15.1";
+var LAST_UPDATED = "6 August 2023";
 var MAX_GOLD = 150 * 1000;
 var MAX_TIME = 240 * 60;
 var itemset = new LeagueItemSet();
@@ -559,6 +559,18 @@ function render_all() {
 fetch("https://ddragon.leagueoflegends.com/cdn/" + LEAGUE_VERSION + "/data/en_US/item.json")
     .then(response => response.json())
     .then(items_json => {
+        // filter items for Summoner's Rift
+        const SUMMONERS_RIFT_MAP_ID = 11;
+        var summoners_rift_items_data = {};
+        for (var item_id in items_json.data) {
+            var item = items_json.data[item_id];
+            if (item.maps[SUMMONERS_RIFT_MAP_ID]) {
+                summoners_rift_items_data[item_id] = item;
+            }
+        };
+        items_json.data = summoners_rift_items_data;
+
+        // prepare and render
         itemset.from_json(items_json);
         
         render_all();
