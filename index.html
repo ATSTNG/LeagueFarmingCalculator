@@ -29,6 +29,7 @@
 
                 <br>
 
+                <div style="display: none;">
                 Champion: 
                 <select id="champion_selector" onchange="build.update_completely_available(); render_all();">
                     <option value="none">Not specific</option>
@@ -36,6 +37,7 @@
                 </select>
 
                 <br>
+                </div>
 
                 Lasthit quality: 
                 <input id='lasthit_quality_selector' onchange='build.update_completely_available(); render_all();' size=1 value='100'>% 
