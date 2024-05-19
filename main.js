@@ -542,8 +542,8 @@ class LeagueStatsTable {
     }
 }
 
-var LEAGUE_VERSION = "14.5.1";
-var LAST_UPDATED = "6 March 2023";
+var LEAGUE_VERSION = "14.10.1";
+var LAST_UPDATED = "19 May 2024";
 var MAX_GOLD = 150 * 1000;
 var MAX_TIME = 240 * 60;
 var itemset = new LeagueItemSet();
@@ -564,7 +564,7 @@ fetch("https://ddragon.leagueoflegends.com/cdn/" + LEAGUE_VERSION + "/data/en_US
         var summoners_rift_items_data = {};
         for (var item_id in items_json.data) {
             var item = items_json.data[item_id];
-            if (item.maps[SUMMONERS_RIFT_MAP_ID]) {
+            if (item.maps[SUMMONERS_RIFT_MAP_ID] && item.requiredAlly != "Ornn") {
                 summoners_rift_items_data[item_id] = item;
             }
         };
